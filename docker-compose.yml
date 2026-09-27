@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pix-escolinha-db
+    environment:
+      POSTGRES_DB: financeiro_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d financeiro_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+ # rabbitmq:
+  #  image: rabbitmq:3.13-management-alpine
+  #  container_name: pix-escolinha-rabbitmq
+   # environment:
+    #  RABBITMQ_DEFAULT_USER: guest
+     # RABBITMQ_DEFAULT_PASS: guest
+    #ports:
+    #  - "5672:5672"   # Porta de comunicação AMQP com a aplicação Spring
+    #  - "15672:15672" # Painel Web do RabbitMQ
+   # restart: always
+
+volumes:
+  postgres_data:
