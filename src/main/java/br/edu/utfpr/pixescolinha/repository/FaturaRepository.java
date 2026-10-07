@@ -10,6 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface FaturaRepository extends JpaRepository<Fatura, Long> {
+    Optional<Fatura> findByExternalPaymentId(String externalPaymentId);
     Optional<Fatura> findByTxid(String txid);
     List<Fatura> findByStatus(StatusFatura status);
     List<Fatura> findByAlunoId(Long alunoId);
