@@ -34,3 +34,15 @@ build/
 .env
 uploads/
 *.sql
+
+# Front-End (React / Vite)
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# Caminhos internos do Monorepo
+backend/target/
+backend/uploads/
+backend/.env
+**/application-local.properties

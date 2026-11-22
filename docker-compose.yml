@@ -1,4 +1,6 @@
+
 services:
+
 
   postgres:
     image: postgres:16-alpine
@@ -32,7 +34,7 @@ services:
     ports:
       - "8081:8080"
     env_file:
-      - .env
+      - ./backend/.env
     volumes:
       - evolution_instances:/evolution/instances
     depends_on:
