@@ -7,6 +7,7 @@ import br.edu.utfpr.pixescolinha.domain.model.Fatura;
 import br.edu.utfpr.pixescolinha.domain.model.Pagamento;
 import br.edu.utfpr.pixescolinha.domain.model.RegistroWebhook;
 import br.edu.utfpr.pixescolinha.dto.WebhookAsaasDTO;
+import br.edu.utfpr.pixescolinha.integration.EvolutionService;
 import br.edu.utfpr.pixescolinha.repository.FaturaRepository;
 import br.edu.utfpr.pixescolinha.repository.PagamentoRepository;
 import br.edu.utfpr.pixescolinha.repository.RegistroWebhookRepository;
@@ -23,6 +24,7 @@ public class WebhookService {
     private final FaturaRepository faturaRepository;
     private final PagamentoRepository pagamentoRepository;
     private final RegistroWebhookRepository registroWebhookRepository;
+    private final EvolutionService evolutionService;
 
     @Transactional
     public void processarWebhookAsaas(WebhookAsaasDTO dto) {
@@ -34,36 +36,44 @@ public class WebhookService {
         String eventType = dto.event();
         String eventId = paymentId + "_" + eventType;
 
-        // Garantia de Idempotência: Se o evento já foi processado, ignora
         if (registroWebhookRepository.existsById(eventId)) {
             return;
         }
 
-        // Processa eventos de confirmação/receção do pagamento Pix
         if ("PAYMENT_RECEIVED".equals(eventType) || "PAYMENT_CONFIRMED".equals(eventType)) {
             Fatura fatura = faturaRepository.findByExternalPaymentId(paymentId)
-                    .orElseGet(() -> faturaRepository.findByTxid(dto.payment().externalReference())
-                            .orElse(null));
+                    .orElseGet(() -> dto.payment().externalReference() != null
+                            ? faturaRepository.findByTxid(dto.payment().externalReference()).orElse(null)
+                            : null);
 
             if (fatura != null && fatura.getStatus() != StatusFatura.PAGA) {
                 fatura.setStatus(StatusFatura.PAGA);
                 faturaRepository.save(fatura);
 
-                Pagamento pagamento = Pagamento.builder()
-                        .fatura(fatura)
-                        .valorPago(dto.payment().value())
-                        .dataPagamento(LocalDateTime.now())
-                        .formaPagamento(FormaPagamento.PIX)
-                        .transacaoId(paymentId)
-                        .statusComprovante(StatusComprovante.NAO_REQUERIDO)
-                        .observacao("Pagamento confirmado via Webhook Asaas (" + eventType + ")")
-                        .build();
+                Pagamento pagamento = pagamentoRepository.findByFaturaId(fatura.getId())
+                        .orElse(Pagamento.builder().fatura(fatura).build());
+
+                pagamento.setValorPago(dto.payment().value() != null ? dto.payment().value() : fatura.getValorFinal());
+                pagamento.setDataPagamento(LocalDateTime.now());
+                pagamento.setFormaPagamento(FormaPagamento.PIX);
+                pagamento.setTransacaoId(paymentId);
+                pagamento.setStatusComprovante(StatusComprovante.APROVADO);
+                if (dto.payment().transactionReceiptUrl() != null && !dto.payment().transactionReceiptUrl().isBlank()) {
+                    pagamento.setUrlComprovante(dto.payment().transactionReceiptUrl());
+                }
+                pagamento.setObservacao("Pagamento confirmado automaticamente via Webhook Asaas (" + eventType + ")");
 
                 pagamentoRepository.save(pagamento);
+
+                evolutionService.enviarConfirmacaoPagamento(
+                        fatura.getResponsavel().getWhatsapp(),
+                        fatura.getResponsavel().getNome(),
+                        fatura.getDescricao(),
+                        fatura.getValorFinal()
+                );
             }
         }
 
-        // Regista o evento como processado
         RegistroWebhook registro = RegistroWebhook.builder()
                 .eventId(eventId)
                 .dataRecebimento(LocalDateTime.now())

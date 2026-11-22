@@ -15,6 +15,7 @@ public record WebhookAsaasDTO(
             String externalReference,
             String billingType,
             String paymentDate,
-            String clientPaymentDate
+            String clientPaymentDate,
+            String transactionReceiptUrl
     ) {}
 }

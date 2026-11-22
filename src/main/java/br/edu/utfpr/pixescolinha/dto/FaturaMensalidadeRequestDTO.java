@@ -3,12 +3,14 @@ package br.edu.utfpr.pixescolinha.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-
 import java.time.LocalDate;
 
 public record FaturaMensalidadeRequestDTO(
         @NotNull(message = "O ID da turma é obrigatório")
         Long turmaId,
+
+        // Opcional: quando informado, gera a mensalidade apenas para este aluno na turma
+        Long alunoId,
 
         @NotNull(message = "O mês de referência é obrigatório")
         @Min(value = 1, message = "Mês deve ser entre 1 e 12")

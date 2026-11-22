@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
 import java.math.BigDecimal;
 
 public record AlunoRequestDTO(
@@ -13,7 +12,7 @@ public record AlunoRequestDTO(
         @Size(max = 100, message = "O nome não pode exceder 100 caracteres")
         String nome,
 
-        @NotBlank(message = "O código de matrícula é obrigatório")
+        // Opcional: se não for enviado, o AlunoService gera automaticamente
         @Size(max = 20, message = "A matrícula não pode exceder 20 caracteres")
         String matriculaCodigo,
 
