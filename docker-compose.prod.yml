@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pix-escolinha-db
+    restart: always
+    environment:
+      POSTGRES_DB: financeiro_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d financeiro_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pix-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pix-escolinha-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - pix-net
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: pix-escolinha-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - pix-net
+
+  evolution-api:
+    image: atendai/evolution-api:v2.2.3
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "127.0.0.1:8081:8080"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - pix-net
+
+  backend:
+    build: ./backend
+    container_name: pix-escolinha-backend
+    restart: always
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pix-escolinha-db:5432/financeiro_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_RABBITMQ_HOST: pix-escolinha-rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS}
+      ASAAS_API_URL: ${ASAAS_API_URL}
+      ASAAS_API_KEY: ${ASAAS_API_KEY}
+      EVOLUTION_API_URL: http://evolution_api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+      EVOLUTION_INSTANCE: escolinha
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      evolution-api:
+        condition: service_started
+    networks:
+      - pix-net
+
+  frontend:
+    build: ./frontend
+    container_name: pix-escolinha-frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - backend
+    networks:
+      - pix-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  evolution_instances:
+
+networks:
+  pix-net:
+    driver: bridge
