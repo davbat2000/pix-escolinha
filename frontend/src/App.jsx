@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AppLayout } from './components/layout/AppLayout';
@@ -9,8 +9,20 @@ import { NovoAlunoPage } from './pages/NovoAlunoPage';
 import { TurmasPage } from './pages/TurmasPage';
 import { ResponsaveisPage } from './pages/ResponsaveisPage';
 import { RelatoriosPage } from './pages/RelatoriosPage';
+import { Login } from './pages/Login'
 
 export default function App() {
+    const [autenticado, setAutenticado] = useState(!!localStorage.getItem('token'));
+
+    function handleLogout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuarioNome');
+        setAutenticado(false);
+    }
+
+    if (!autenticado) {
+        return <Login onLoginSuccess={() => setAutenticado(true)} />;
+    }
     return (
         <ToastProvider>
             <BrowserRouter>
